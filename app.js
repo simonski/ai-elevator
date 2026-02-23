@@ -557,20 +557,19 @@ function saveScrollTop() {
   } catch {}
 }
 
-function getCenteredIntroductionScrollTop() {
+function getBottomAlignedIntroductionScrollTop() {
   if (!landingEl) {
     return 0;
   }
 
   const rect = landingEl.getBoundingClientRect();
   const sectionTop = window.scrollY + rect.top;
-  const centered = sectionTop + rect.height / 2 - window.innerHeight / 2;
-  return clampScrollTop(centered);
+  const bottomAligned = sectionTop + rect.height - window.innerHeight;
+  return clampScrollTop(bottomAligned);
 }
 
 function restoreInitialScrollPosition() {
-  const saved = getSavedScrollTop();
-  const target = saved === null ? getCenteredIntroductionScrollTop() : saved;
+  const target = getBottomAlignedIntroductionScrollTop();
   window.scrollTo({ top: target, behavior: "auto" });
 }
 
@@ -839,6 +838,8 @@ async function init() {
 
   window.requestAnimationFrame(() => {
     document.body.classList.add("app-ready");
+    restoreInitialScrollPosition();
+    updateLandingProgress();
   });
 }
 
