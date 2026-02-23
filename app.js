@@ -56,6 +56,8 @@ const landingTitleEl = document.getElementById("landing-title");
 const landingBodyEl = document.getElementById("landing-body");
 const landingNoteEl = document.getElementById("landing-note");
 const retroScreenEl = document.getElementById("retro-screen");
+const showFloorsLinkEl = document.getElementById("show-floors-link");
+const floorPlaintextEl = document.getElementById("floor-plaintext");
 
 const packetInputs = ["JAVA", "PYTHON", "GO"];
 const packetOutputs = {
@@ -263,6 +265,60 @@ function applySettings(settings) {
 
 function getIntroduction() {
   return introduction || {};
+}
+
+function stripHtml(value) {
+  return String(value || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function formatFloorsPlainText(floorList) {
+  if (!Array.isArray(floorList) || !floorList.length) {
+    return "No floors found in app.json.";
+  }
+
+  return floorList
+    .map((floor, index) => {
+      const floorLevel = floor.level || `Floor ${index + 1}`;
+      const floorTitle = floor.title || "Untitled";
+      const subtitle = stripHtml(floor.subtitle || "");
+      const description = stripHtml(floor.description || "");
+      const lines = [`${index + 1}. ${floorLevel}`, `Title: ${floorTitle}`];
+
+      if (subtitle) {
+        lines.push(`Subtitle: ${subtitle}`);
+      }
+      if (description) {
+        lines.push(`Description: ${description}`);
+      }
+
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
+
+function setupFloorPlainTextLink() {
+  if (!showFloorsLinkEl || !floorPlaintextEl) {
+    return;
+  }
+
+  showFloorsLinkEl.addEventListener("click", async (event) => {
+    event.preventDefault();
+    floorPlaintextEl.hidden = false;
+    floorPlaintextEl.textContent = "Loading floors from app.json...";
+
+    try {
+      const appConfig = await loadAppConfig();
+      floorPlaintextEl.textContent = formatFloorsPlainText(appConfig.floors);
+    } catch (error) {
+      floorPlaintextEl.textContent = "Unable to read app.json right now.";
+      console.error(error);
+    }
+
+    floorPlaintextEl.focus();
+  });
 }
 
 function clearIntroductionContent() {
@@ -786,6 +842,7 @@ async function init() {
   });
 }
 
+setupFloorPlainTextLink();
 init();
 
 window.addEventListener("scroll", () => {

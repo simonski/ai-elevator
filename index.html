@@ -80,7 +80,25 @@
     </div>
   </section>
 
-  <a class="simonski-link" href="https://simonski.com" target="_blank" rel="noopener noreferrer">
+  <a
+    id="show-floors-link"
+    class="utility-link utility-link-left"
+    href="#floor-plaintext"
+    aria-controls="floor-plaintext"
+  >
+    Read floors as plain text
+  </a>
+
+  <pre
+    id="floor-plaintext"
+    class="floor-plaintext"
+    aria-live="polite"
+    aria-label="Floors rendered as plain text"
+    tabindex="-1"
+    hidden
+  ></pre>
+
+  <a class="simonski-link utility-link utility-link-right" href="https://simonski.com" target="_blank" rel="noopener noreferrer">
     simonski.com
   </a>
 

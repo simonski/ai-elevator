@@ -66,7 +66,21 @@ extend app.json to contain a settings object which holds the variables that can 
 ----------------------------------------------------------------------------------------
 increase the fade in on all screens to be 2 seconds
 ----------------------------------------------------------------------------------------
-----------------------------------------------------------------------------------------
+the first floor: fade in the building first, then 2 seconds later fade in the text
+-----------------------------------------------------------------------------------
+before the introduction I want a langing page that has no border but two words
+centered, one below each other
+AI 
+Elevator
+[followed by]
+ARROW UP Scroll Up ARROW UP
+
+The workds AI and Elevator shoudl be slowly rotating back and forth from -15 to 15 degrees
+the words Scroll Up should have arrows on eithr sde slowing animating up and down
+
+THIS is the landing page that then fades out to the introduction when the user scrolls.
+
+-----
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
 ----------------------------------------------------------------------------------------
