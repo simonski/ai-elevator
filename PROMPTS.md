@@ -47,7 +47,28 @@ update so at each level it renders the stats of each level : humans, velocity, t
 
 anchor a simonski.com link in the bottom right in courier
 ----------------------------------------------------------------------------------------
+
+migrate the introduction information into the app.json floors variable so that it is not hardcoded in code or html.
 ----------------------------------------------------------------------------------------
 
+the initial load should fade in and centre the introduction in the window.   Subsequent loads should "remember" the position the user was last in and fade into that----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
 
+new branch; every 3rd floor I want to animate the building eithe rleft to right, or right to left, and I want the information to scroll in on the other side.
 
+----------------------------------------------------------------------------------------
+
+replace the "every 3rd floor" with a variable in the json that indicates data soruce - left|right
+default to right if not present in the json
+
+----------------------------------------------------------------------------------------
+extend app.json to contain a settings object which holds the variables that can be tweaked, for example default timings for animations.   in this way the human can change these settings to tweak the look at feel.
+----------------------------------------------------------------------------------------
+increase the fade in on all screens to be 2 seconds
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------

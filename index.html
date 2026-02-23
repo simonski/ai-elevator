@@ -10,8 +10,8 @@
   <div class="sky" aria-hidden="true"></div>
 
   <aside class="hud" aria-live="polite">
-    <p class="hud-label">Altitude</p>
-    <p id="altitude" class="hud-value">0 m</p>
+    <p class="hud-label">Productivity-o-Meter</p>
+    <p id="altitude" class="hud-value">1x </p>
     <p id="layer" class="hud-sub">Lobby Layer</p>
     <div class="hud-stats">
       <p><span>Humans</span><strong id="hud-humans">x1</strong></p>
@@ -21,13 +21,11 @@
     </div>
   </aside>
 
-  <div id="scroll-cue" class="scroll-cue" aria-hidden="true">Scroll Up!</div>
-
   <main class="layout" id="experience-layout">
     <section class="tower-column" aria-label="Building map">
       <div class="tower-sticky">
         <h1>The AI Elevator</h1>
-        <p class="intro">Ride from the lobby to advanced agent systems.</p>
+        <p id="tower-intro" class="intro"></p>
 
         <div class="tower" id="tower">
           <div class="tower-cap"></div>
@@ -44,42 +42,41 @@
   </main>
 
   <section id="landing" class="landing" aria-label="Welcome">
-    <div class="landing-card">
-      <p class="landing-kicker">The AI Elevator</p>
-      <h2>Welcome aboard</h2>
-      <p>
-        This is an interactive ride through how AI use in software engineering evolves
-        from simple prompting to advanced multi-agent systems.
-      </p>
-      <p class="landing-note">
-        Start here. Scroll up to enter the building.
-      </p>
-
-      <div class="landing-whimsy" aria-hidden="true">
-        <div class="retro-rig">
-          <div class="retro-screen">
-            <p>_inline bootstrap();</p>
-            <p>10 PRINT \"HELLO FORTRAN\"</p>
-            <p>MOV AX, 0001h</p>
-          </div>
+    <div class="landing-splash" aria-label="Landing page">
+      <div class="splash-visual splash-visual-left" aria-hidden="true">
+        <div class="retro-rig splash-retro">
+          <div id="retro-screen" class="retro-screen"></div>
           <div class="retro-base"></div>
         </div>
+      </div>
 
-        <div class="punch-cards">
-          <div class="card card-a"></div>
-          <div class="card card-b"></div>
-          <div class="card card-c"></div>
-        </div>
+      <div class="splash-copy">
+        <p class="splash-word splash-word-ai">AI</p>
+        <p class="splash-word splash-word-elevator">Elevator</p>
+        <p class="splash-scroll">
+          <span class="splash-arrow" aria-hidden="true">↑</span>
+          <span>Scroll Up</span>
+          <span class="splash-arrow" aria-hidden="true">↑</span>
+        </p>
+      </div>
 
-        <div id="pcb-scene" class="pcb-scene">
+      <div class="splash-visual splash-visual-right" aria-hidden="true">
+        <div id="pcb-scene" class="pcb-scene splash-pcb">
           <div class="trace trace-in"></div>
           <div class="trace trace-out"></div>
           <div class="trace-glow"></div>
           <div id="cpu-core" class="cpu-core">CPU</div>
           <div id="packet-lane" class="packet-lane"></div>
-          <p class="pcb-caption">01001001 | MOV AX | COBOL DIVISION</p>
+          <p class="pcb-caption">01001001 | MOV AX | JAVA DIVISION</p>
         </div>
       </div>
+    </div>
+
+    <div class="landing-card">
+      <p id="landing-kicker" class="landing-kicker"></p>
+      <h2 id="landing-title"></h2>
+      <p id="landing-body"></p>
+      <p id="landing-note" class="landing-note"></p>
     </div>
   </section>
 

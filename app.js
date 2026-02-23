@@ -1,162 +1,43 @@
-const floors = [
-  {
-    id: "ground-floor",
-    level: "Ground Floor",
-    title: "Lobby",
-    altitude: 0,
-    layer: "Lobby Layer",
-    humans: "x1",
-    velocity: "x1",
-    team: "Solo",
-    agents: "x1",
-    subtitle: "Website, prompting, conversational.",
-    description:
-      "You login to ChatGPT, Copilot, or Claude.ai. You talk to your AI, copy and paste, and get useful output quickly.",
-    welcome: "Welcome aboard. You are at Ground Floor. Scroll up to ride the AI Elevator."
+let floors = [];
+let introduction = {};
+const LAST_SCROLL_STORAGE_KEY = "ai-elevator:last-scroll-y";
+const defaultSettings = {
+  animations: {
+    pageFadeMs: 420,
+    layoutSlideMs: 520,
+    cardRevealMs: 560,
+    layoutFlipMs: 560,
+    carMoveMs: 380,
+    landingFadeMs: 180
   },
-  {
-    id: "first-floor",
-    level: "First Floor",
-    title: "Editor Dialog",
-    altitude: 900,
-    layer: "City Layer",
-    humans: "x1",
-    velocity: "x1",
-    team: "Pair",
-    agents: "x1",
-    subtitle: "You and the model are both writing code.",
-    description:
-      "Inside an editor, you stay in dialog with the model while it helps generate implementation as you iterate."
+  interactions: {
+    landingFadeDistancePx: 540,
+    introRevealDistancePx: 280,
+    revealThreshold: 0.24,
+    activeThreshold: 0.58,
+    landingObserverThreshold: 0.45
   },
-  {
-    id: "second-floor",
-    level: "Second Floor",
-    title: "Tooling Fluency",
-    altitude: 1800,
-    layer: "City Layer",
-    humans: "x2",
-    velocity: "x2",
-    team: "Pair",
-    agents: "x2",
-    subtitle: "Plan mode and approvals improve speed.",
-    description:
-      "You start using command workflows. The editor can modify code for you while you approve actions and keep momentum."
+  pcb: {
+    packetIntervalMs: 820,
+    packetDurationMinMs: 2200,
+    packetDurationRangeMs: 900,
+    cpuFlashMs: 190,
+    cpuFlashFirstRatio: 0.52,
+    cpuFlashSecondRatio: 0.72
   },
-  {
-    id: "third-floor",
-    level: "Third Floor",
-    title: "One-Shot Thinking",
-    altitude: 3000,
-    layer: "Builder Layer",
-    humans: "x2",
-    velocity: "x2",
-    team: "Pair",
-    agents: "x2",
-    subtitle: "From back-and-forth chat to stronger one-shots.",
-    description:
-      "You rely more on structured instructions and preset rules. You write less code directly and focus on outcome quality."
-  },
-  {
-    id: "fourth-floor",
-    level: "Fourth Floor",
-    title: "Rules as Infrastructure",
-    altitude: 4500,
-    layer: "Builder Layer",
-    humans: "x2",
-    velocity: "x2",
-    team: "Pair",
-    agents: "x2",
-    subtitle: "Editor and terminal become one loop.",
-    description:
-      "You keep rules in markdown and auto-load them into sessions so behavior is consistent and reusable."
-  },
-  {
-    id: "fifth-floor",
-    level: "Fifth Floor",
-    title: "Parallel Sessions",
-    altitude: 6500,
-    layer: "Builder Layer",
-    humans: "x2",
-    velocity: "x4",
-    team: "Pod",
-    agents: "x4",
-    subtitle: "More than one agent session at a time.",
-    description:
-      "You run sessions in parallel, compare outputs, and share working patterns with other engineers."
-  },
-  {
-    id: "sixth-floor",
-    level: "Sixth Floor",
-    title: "Structured Decomposition",
-    altitude: 9000,
-    layer: "Systems Layer",
-    humans: "x3",
-    velocity: "x8",
-    team: "Crew",
-    agents: "x8",
-    subtitle: "One-shots evolve into epics and tasks.",
-    description:
-      "You experiment with beads and drive agents with decomposed work rather than only ad-hoc prompts."
-  },
-  {
-    id: "seventh-floor",
-    level: "Seventh Floor",
-    title: "Automation Discipline",
-    altitude: 13000,
-    layer: "Systems Layer",
-    humans: "x3",
-    velocity: "x16",
-    team: "Crew",
-    agents: "x16",
-    subtitle: "Conversation moves to architecture and verification.",
-    description:
-      "You are less conversational during coding and more conversational during requirements, decomposition, and rigor."
-  },
-  {
-    id: "eighth-floor",
-    level: "Eighth Floor",
-    title: "Spec-Driven Work",
-    altitude: 18500,
-    layer: "Systems Layer",
-    humans: "x4",
-    velocity: "x64",
-    team: "Network",
-    agents: "x64",
-    subtitle: "Specifications generate beads that generate execution.",
-    description:
-      "You are comfortable letting agents run over prepared structures and frameworks you maintain."
-  },
-  {
-    id: "ninth-floor",
-    level: "Ninth Floor",
-    title: "Verification First",
-    altitude: 26000,
-    layer: "Frontier Layer",
-    humans: "x4",
-    velocity: "x128",
-    team: "Network",
-    agents: "x128",
-    subtitle: "Consensus and verification are core loops.",
-    description:
-      "You accept hallucinations as an operating constraint and design systems around checks, councils, and confidence."
-  },
-  {
-    id: "tenth-floor",
-    level: "Tenth Floor",
-    title: "Authoring the Stack",
-    altitude: 36000,
-    layer: "Frontier Layer",
-    humans: "x0.5",
-    velocity: "x16384",
-    team: "Founder",
-    agents: "x16384",
-    subtitle: "You build your own primitives.",
-    description:
-      "You are writing your own beads and frameworks. You are not just using the elevator anymore, you are building it."
+  layout: {
+    flipCleanupExtraMs: 60
   }
-];
+};
+const runtimeSettings = {
+  ...defaultSettings.animations,
+  ...defaultSettings.interactions,
+  ...defaultSettings.pcb,
+  ...defaultSettings.layout
+};
 
 const stopsEl = document.getElementById("stops");
+const layoutEl = document.getElementById("experience-layout");
 const towerFloorsEl = document.getElementById("tower-floors");
 const carEl = document.getElementById("car");
 const activeFloorEl = document.getElementById("active-floor");
@@ -166,29 +47,250 @@ const hudHumansEl = document.getElementById("hud-humans");
 const hudVelocityEl = document.getElementById("hud-velocity");
 const hudTeamEl = document.getElementById("hud-team");
 const hudAgentsEl = document.getElementById("hud-agents");
-const scrollCueEl = document.getElementById("scroll-cue");
 const landingEl = document.getElementById("landing");
 const packetLaneEl = document.getElementById("packet-lane");
 const cpuCoreEl = document.getElementById("cpu-core");
+const towerIntroEl = document.getElementById("tower-intro");
+const landingKickerEl = document.getElementById("landing-kicker");
+const landingTitleEl = document.getElementById("landing-title");
+const landingBodyEl = document.getElementById("landing-body");
+const landingNoteEl = document.getElementById("landing-note");
+const retroScreenEl = document.getElementById("retro-screen");
 
-const packetLabels = [
-  "0101",
-  "MSG",
-  "MOV",
-  "ACK",
-  "_inline",
-  "COBOL",
-  "FORTRAN",
-  "JMP"
-];
+const packetInputs = ["JAVA", "PYTHON", "GO"];
+const packetOutputs = {
+  JAVA: "101011101",
+  PYTHON: "00101011",
+  GO: "010"
+};
 const packetColors = [
   ["#67d7ff", "#ffe08e", "#ff90cd"],
   ["#7ce7b4", "#ffe08e", "#ff8f79"],
   ["#8ec3ff", "#ffd777", "#f89dff"]
 ];
+const retroIdleDelayMs = 2600;
+const retroTypeDelayMs = 24;
+const retroInitialText = "package main";
+const retroSieveSource = [
+  "package main",
+  "",
+  "import (",
+  "    \"fmt\"",
+  ")",
+  "",
+  "func sieve(limit int) []int {",
+  "    if limit < 2 {",
+  "        return nil",
+  "    }",
+  "",
+  "    isPrime := make([]bool, limit+1)",
+  "    for i := 2; i <= limit; i++ {",
+  "        isPrime[i] = true",
+  "    }",
+  "",
+  "    for p := 2; p*p <= limit; p++ {",
+  "        if !isPrime[p] {",
+  "            continue",
+  "        }",
+  "",
+  "        for multiple := p * p; multiple <= limit; multiple += p {",
+  "            isPrime[multiple] = false",
+  "        }",
+  "    }",
+  "",
+  "    primes := make([]int, 0, limit/2)",
+  "    for i := 2; i <= limit; i++ {",
+  "        if isPrime[i] {",
+  "            primes = append(primes, i)",
+  "        }",
+  "    }",
+  "",
+  "    return primes",
+  "}",
+  "",
+  "func main() {",
+  "    const limit = 100",
+  "    primes := sieve(limit)",
+  "    fmt.Printf(\"Primes up to %d:\\n%v\\n\", limit, primes)",
+  "}"
+].join("\n");
+let currentLayoutSideClass = "side-left";
+let flipTimerId = null;
+let packetIntervalId = null;
+let groundFloorTextTimerId = null;
+let groundFloorSequencePlayed = false;
+let retroIdleTimerId = null;
+let retroTypingTimerId = null;
+let retroTypingIndex = 0;
+let retroTypingStarted = false;
+let retroTypingPaused = false;
+let retroTypingCompleted = false;
+
+function readNumber(value, fallback, min, max) {
+  const num = Number(value);
+  if (!Number.isFinite(num)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(max, num));
+}
+
+function applySettings(settings) {
+  const animations = settings && settings.animations ? settings.animations : {};
+  const interactions = settings && settings.interactions ? settings.interactions : {};
+  const pcb = settings && settings.pcb ? settings.pcb : {};
+  const layout = settings && settings.layout ? settings.layout : {};
+
+  runtimeSettings.pageFadeMs = readNumber(
+    animations.pageFadeMs,
+    defaultSettings.animations.pageFadeMs,
+    0,
+    4000
+  );
+  runtimeSettings.layoutSlideMs = readNumber(
+    animations.layoutSlideMs,
+    defaultSettings.animations.layoutSlideMs,
+    0,
+    4000
+  );
+  runtimeSettings.cardRevealMs = readNumber(
+    animations.cardRevealMs,
+    defaultSettings.animations.cardRevealMs,
+    0,
+    4000
+  );
+  runtimeSettings.layoutFlipMs = readNumber(
+    animations.layoutFlipMs,
+    defaultSettings.animations.layoutFlipMs,
+    0,
+    4000
+  );
+  runtimeSettings.carMoveMs = readNumber(
+    animations.carMoveMs,
+    defaultSettings.animations.carMoveMs,
+    0,
+    4000
+  );
+  runtimeSettings.landingFadeMs = readNumber(
+    animations.landingFadeMs,
+    defaultSettings.animations.landingFadeMs,
+    0,
+    4000
+  );
+
+  runtimeSettings.landingFadeDistancePx = readNumber(
+    interactions.landingFadeDistancePx,
+    defaultSettings.interactions.landingFadeDistancePx,
+    1,
+    4000
+  );
+  runtimeSettings.introRevealDistancePx = readNumber(
+    interactions.introRevealDistancePx,
+    defaultSettings.interactions.introRevealDistancePx,
+    1,
+    4000
+  );
+  runtimeSettings.revealThreshold = readNumber(
+    interactions.revealThreshold,
+    defaultSettings.interactions.revealThreshold,
+    0,
+    1
+  );
+  runtimeSettings.activeThreshold = readNumber(
+    interactions.activeThreshold,
+    defaultSettings.interactions.activeThreshold,
+    0,
+    1
+  );
+  runtimeSettings.landingObserverThreshold = readNumber(
+    interactions.landingObserverThreshold,
+    defaultSettings.interactions.landingObserverThreshold,
+    0,
+    1
+  );
+
+  runtimeSettings.packetIntervalMs = readNumber(
+    pcb.packetIntervalMs,
+    defaultSettings.pcb.packetIntervalMs,
+    1,
+    10000
+  );
+  runtimeSettings.packetDurationMinMs = readNumber(
+    pcb.packetDurationMinMs,
+    defaultSettings.pcb.packetDurationMinMs,
+    1,
+    20000
+  );
+  runtimeSettings.packetDurationRangeMs = readNumber(
+    pcb.packetDurationRangeMs,
+    defaultSettings.pcb.packetDurationRangeMs,
+    0,
+    20000
+  );
+  runtimeSettings.cpuFlashMs = readNumber(
+    pcb.cpuFlashMs,
+    defaultSettings.pcb.cpuFlashMs,
+    0,
+    5000
+  );
+  runtimeSettings.cpuFlashFirstRatio = readNumber(
+    pcb.cpuFlashFirstRatio,
+    defaultSettings.pcb.cpuFlashFirstRatio,
+    0,
+    1
+  );
+  runtimeSettings.cpuFlashSecondRatio = readNumber(
+    pcb.cpuFlashSecondRatio,
+    defaultSettings.pcb.cpuFlashSecondRatio,
+    0,
+    1
+  );
+
+  runtimeSettings.flipCleanupExtraMs = readNumber(
+    layout.flipCleanupExtraMs,
+    defaultSettings.layout.flipCleanupExtraMs,
+    0,
+    2000
+  );
+
+  document.documentElement.style.setProperty("--duration-page-fade", `${runtimeSettings.pageFadeMs}ms`);
+  document.documentElement.style.setProperty("--duration-layout-slide", `${runtimeSettings.layoutSlideMs}ms`);
+  document.documentElement.style.setProperty("--duration-card-reveal", `${runtimeSettings.cardRevealMs}ms`);
+  document.documentElement.style.setProperty("--duration-layout-flip", `${runtimeSettings.layoutFlipMs}ms`);
+  document.documentElement.style.setProperty("--duration-car-move", `${runtimeSettings.carMoveMs}ms`);
+  document.documentElement.style.setProperty("--duration-landing-fade", `${runtimeSettings.landingFadeMs}ms`);
+}
+
+function getIntroduction() {
+  return introduction || {};
+}
+
+function clearIntroductionContent() {
+  document.body.classList.remove("introduction-visible");
+  towerIntroEl.textContent = "";
+  landingKickerEl.textContent = "";
+  landingTitleEl.textContent = "";
+  landingBodyEl.textContent = "";
+  landingNoteEl.textContent = "";
+}
+
+function applyIntroductionContent() {
+  const intro = getIntroduction();
+
+  towerIntroEl.textContent = intro.towerIntro || "";
+  landingKickerEl.textContent = intro.landingKicker || "";
+  landingTitleEl.textContent = intro.landingTitle || "";
+  landingBodyEl.textContent = intro.landingBody || "";
+  landingNoteEl.textContent = intro.landingNote || "";
+
+  window.requestAnimationFrame(() => {
+    document.body.classList.add("introduction-visible");
+  });
+}
 
 function render() {
   const visualOrder = floors.slice().reverse();
+  const intro = getIntroduction();
 
   const floorsMarkup = visualOrder
     .map((floor) => {
@@ -214,21 +316,21 @@ function render() {
     })
     .join("");
 
-  const entryMarkup = `
-    <article class="stop entry-stop" id="tower-entry">
-      <section class="card">
-        <div class="badges">
-          <span>Tower Entry</span>
-        </div>
-        <h2>The Building Appears</h2>
-        <p class="subtitle">Your ride starts now.</p>
-        <p>
-          As you scroll up from the welcome page, the tower slides into view on the left.
-          Keep scrolling up to reach Ground Floor on the right.
-        </p>
-      </section>
-    </article>
-  `;
+  const entryStop = intro.entryStop || {};
+  const entryMarkup = entryStop.title
+    ? `
+      <article class="stop entry-stop" id="tower-entry">
+        <section class="card">
+          <div class="badges">
+            <span>${entryStop.badge || "Tower Entry"}</span>
+          </div>
+          <h2>${entryStop.title}</h2>
+          <p class="subtitle">${entryStop.subtitle || ""}</p>
+          <p>${entryStop.description || ""}</p>
+        </section>
+      </article>
+    `
+    : "";
 
   stopsEl.innerHTML = `${floorsMarkup}${entryMarkup}`;
 
@@ -241,6 +343,10 @@ function render() {
 }
 
 function setActive(index) {
+  if (!floors.length) {
+    return;
+  }
+
   const towerFloors = Array.from(document.querySelectorAll(".tower-floor"));
   const target = towerFloors.find((node) => Number(node.dataset.index) === index);
 
@@ -252,8 +358,10 @@ function setActive(index) {
   target.classList.add("active");
 
   const current = floors[index];
+  updateLayoutForFloor(index);
+  triggerGroundFloorSequence(index);
   activeFloorEl.textContent = current.level;
-  altitudeEl.textContent = `${current.altitude.toLocaleString()} m`;
+  altitudeEl.textContent = `${current.altitude.toLocaleString()}`;
   layerEl.textContent = current.layer;
   hudHumansEl.textContent = current.humans;
   hudVelocityEl.textContent = current.velocity;
@@ -264,6 +372,70 @@ function setActive(index) {
   const top = target.offsetTop;
   carEl.style.height = `${target.offsetHeight}px`;
   document.documentElement.style.setProperty("--car-top", `${top}px`);
+}
+
+function triggerGroundFloorSequence(index) {
+  if (groundFloorSequencePlayed) {
+    return;
+  }
+
+  const groundFloorIndex = floors.findIndex((floor) => floor.id === "ground-floor");
+  if (groundFloorIndex < 0 || index !== groundFloorIndex) {
+    return;
+  }
+
+  groundFloorSequencePlayed = true;
+  document.body.classList.add("ground-floor-sequence");
+
+  window.requestAnimationFrame(() => {
+    document.body.classList.add("ground-floor-building-ready");
+  });
+
+  if (groundFloorTextTimerId) {
+    window.clearTimeout(groundFloorTextTimerId);
+  }
+
+  groundFloorTextTimerId = window.setTimeout(() => {
+    document.body.classList.add("ground-floor-text-ready");
+    groundFloorTextTimerId = null;
+  }, 2000);
+}
+
+function getDataSourceForFloor(index) {
+  const floor = floors[index];
+  return floor && floor.dataSource === "left" ? "left" : "right";
+}
+
+function updateLayoutForFloor(index) {
+  if (!layoutEl) {
+    return;
+  }
+
+  if (window.innerWidth <= 920) {
+    layoutEl.classList.remove("side-left", "side-right", "is-flipping");
+    currentLayoutSideClass = "side-left";
+    return;
+  }
+
+  const dataSource = getDataSourceForFloor(index);
+  const nextLayoutSideClass = dataSource === "left" ? "side-right" : "side-left";
+  const sideChanged = nextLayoutSideClass !== currentLayoutSideClass;
+
+  layoutEl.classList.remove("side-left", "side-right");
+  layoutEl.classList.add(nextLayoutSideClass);
+
+  if (sideChanged) {
+    layoutEl.classList.add("is-flipping");
+    if (flipTimerId) {
+      window.clearTimeout(flipTimerId);
+    }
+    flipTimerId = window.setTimeout(() => {
+      layoutEl.classList.remove("is-flipping");
+      flipTimerId = null;
+    }, runtimeSettings.layoutFlipMs + runtimeSettings.flipCleanupExtraMs);
+  }
+
+  currentLayoutSideClass = nextLayoutSideClass;
 }
 
 function initObservers() {
@@ -277,7 +449,7 @@ function initObservers() {
         }
       });
     },
-    { threshold: 0.24 }
+    { threshold: runtimeSettings.revealThreshold }
   );
 
   const activeObserver = new IntersectionObserver(
@@ -295,7 +467,7 @@ function initObservers() {
         setActive(index);
       });
     },
-    { threshold: 0.58 }
+    { threshold: runtimeSettings.activeThreshold }
   );
 
   stops.forEach((stop) => {
@@ -304,16 +476,79 @@ function initObservers() {
   });
 }
 
-function scrollToGroundFloor() {
-  window.scrollTo({ top: document.body.scrollHeight, behavior: "auto" });
+function clampScrollTop(value) {
+  const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight);
+  return Math.max(0, Math.min(value, maxScroll));
 }
 
-function updateScrollCue() {
-  const nearBottom = window.scrollY + window.innerHeight >= document.body.scrollHeight - 60;
-  scrollCueEl.textContent = document.body.classList.contains("in-landing")
-    ? "Scroll Up To Enter"
-    : "Scroll Up!";
-  scrollCueEl.classList.toggle("hidden", !nearBottom);
+function getSavedScrollTop() {
+  try {
+    const raw = window.localStorage.getItem(LAST_SCROLL_STORAGE_KEY);
+    if (raw === null) {
+      return null;
+    }
+
+    const value = Number(raw);
+    return Number.isFinite(value) ? clampScrollTop(value) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveScrollTop() {
+  try {
+    window.localStorage.setItem(LAST_SCROLL_STORAGE_KEY, String(Math.round(window.scrollY)));
+  } catch {}
+}
+
+function getCenteredIntroductionScrollTop() {
+  if (!landingEl) {
+    return 0;
+  }
+
+  const rect = landingEl.getBoundingClientRect();
+  const sectionTop = window.scrollY + rect.top;
+  const centered = sectionTop + rect.height / 2 - window.innerHeight / 2;
+  return clampScrollTop(centered);
+}
+
+function restoreInitialScrollPosition() {
+  const saved = getSavedScrollTop();
+  const target = saved === null ? getCenteredIntroductionScrollTop() : saved;
+  window.scrollTo({ top: target, behavior: "auto" });
+}
+
+function setActiveFromViewport() {
+  const stops = Array.from(document.querySelectorAll(".stop[data-index]"));
+  let bestIndex = 0;
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  stops.forEach((stop) => {
+    const index = Number(stop.dataset.index);
+    if (Number.isNaN(index)) {
+      return;
+    }
+
+    const rect = stop.getBoundingClientRect();
+    const center = (rect.top + rect.bottom) / 2;
+    const distance = Math.abs(center - window.innerHeight / 2);
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestIndex = index;
+    }
+  });
+
+  setActive(bestIndex);
+}
+
+function updateLayoutForViewport() {
+  if (!floors.length) {
+    return;
+  }
+
+  const currentLabel = activeFloorEl.textContent;
+  const index = floors.findIndex((floor) => floor.level === currentLabel);
+  updateLayoutForFloor(index >= 0 ? index : 0);
 }
 
 function updateLandingProgress() {
@@ -321,23 +556,34 @@ function updateLandingProgress() {
     0,
     document.body.scrollHeight - (window.scrollY + window.innerHeight)
   );
-  const fadeDistance = 540;
+  const fadeDistance = runtimeSettings.landingFadeDistancePx;
+  const introDistance = runtimeSettings.introRevealDistancePx;
   const progress = Math.max(0, Math.min(1, 1 - distanceFromBottom / fadeDistance));
+  const introReveal = Math.max(0, Math.min(1, distanceFromBottom / introDistance));
   document.documentElement.style.setProperty("--landing-progress", progress.toFixed(3));
+  document.documentElement.style.setProperty("--intro-reveal", introReveal.toFixed(3));
 }
 
 function setupLandingObserver() {
+  if (!landingEl) {
+    return;
+  }
+
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
         document.body.classList.toggle("in-landing", entry.isIntersecting);
+        if (entry.isIntersecting) {
+          resumeRetroTyping();
+        } else {
+          pauseRetroTyping();
+        }
         if (!entry.isIntersecting) {
           document.documentElement.style.setProperty("--landing-progress", "0");
         }
-        updateScrollCue();
       });
     },
-    { threshold: 0.45 }
+    { threshold: runtimeSettings.landingObserverThreshold }
   );
 
   observer.observe(landingEl);
@@ -350,7 +596,7 @@ function flashCpu(color) {
 
   cpuCoreEl.style.setProperty("--cpu-glow", color);
   cpuCoreEl.classList.add("hot");
-  window.setTimeout(() => cpuCoreEl.classList.remove("hot"), 190);
+  window.setTimeout(() => cpuCoreEl.classList.remove("hot"), runtimeSettings.cpuFlashMs);
 }
 
 function spawnPacket() {
@@ -359,13 +605,16 @@ function spawnPacket() {
   }
 
   const packet = document.createElement("span");
-  const label = packetLabels[Math.floor(Math.random() * packetLabels.length)];
+  const input = packetInputs[Math.floor(Math.random() * packetInputs.length)];
+  const output = packetOutputs[input] || input;
   const colors = packetColors[Math.floor(Math.random() * packetColors.length)];
-  const duration = 2200 + Math.floor(Math.random() * 900);
+  const duration =
+    runtimeSettings.packetDurationMinMs +
+    Math.floor(Math.random() * runtimeSettings.packetDurationRangeMs);
   const laneOffset = 48 + Math.random() * 8;
 
   packet.className = "packet";
-  packet.textContent = label;
+  packet.textContent = input;
   packet.style.top = `${laneOffset}%`;
   packet.style.animationDuration = `${duration}ms`;
   packet.style.setProperty("--c-in", colors[0]);
@@ -373,8 +622,17 @@ function spawnPacket() {
   packet.style.setProperty("--c-out", colors[2]);
   packetLaneEl.append(packet);
 
-  window.setTimeout(() => flashCpu(colors[1]), Math.floor(duration * 0.52));
-  window.setTimeout(() => flashCpu(colors[2]), Math.floor(duration * 0.72));
+  window.setTimeout(
+    () => {
+      flashCpu(colors[1]);
+      packet.textContent = output;
+    },
+    Math.floor(duration * runtimeSettings.cpuFlashFirstRatio)
+  );
+  window.setTimeout(
+    () => flashCpu(colors[2]),
+    Math.floor(duration * runtimeSettings.cpuFlashSecondRatio)
+  );
   packet.addEventListener("animationend", () => packet.remove(), { once: true });
 }
 
@@ -389,40 +647,160 @@ function initPcbAnimation() {
   }
 
   spawnPacket();
-  window.setInterval(spawnPacket, 820);
+  if (packetIntervalId) {
+    window.clearInterval(packetIntervalId);
+  }
+  packetIntervalId = window.setInterval(spawnPacket, runtimeSettings.packetIntervalMs);
 }
 
-render();
-initObservers();
-setupLandingObserver();
-initPcbAnimation();
-setActive(0);
+function startRetroTyping() {
+  if (!retroScreenEl || retroTypingCompleted || retroTypingTimerId) {
+    return;
+  }
 
-if (document.readyState === "loading") {
-  document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-      scrollToGroundFloor();
-      setActive(0);
-      updateLandingProgress();
-      updateScrollCue();
-    },
-    { once: true }
-  );
-} else {
-  scrollToGroundFloor();
-  setActive(0);
+  if (!retroTypingStarted) {
+    retroTypingStarted = true;
+    retroScreenEl.textContent = retroInitialText;
+    retroTypingIndex = retroInitialText.length;
+  }
+  retroTypingPaused = false;
+
+  retroTypingTimerId = window.setInterval(() => {
+    if (!retroScreenEl) {
+      return;
+    }
+
+    retroTypingIndex += 1;
+    retroScreenEl.textContent = retroSieveSource.slice(0, retroTypingIndex);
+    retroScreenEl.scrollTop = retroScreenEl.scrollHeight;
+
+    if (retroTypingIndex >= retroSieveSource.length) {
+      window.clearInterval(retroTypingTimerId);
+      retroTypingTimerId = null;
+      retroTypingCompleted = true;
+    }
+  }, retroTypeDelayMs);
+}
+
+function scheduleRetroTypingOnIdle() {
+  if (!retroScreenEl || retroTypingStarted || retroTypingCompleted || retroTypingPaused) {
+    return;
+  }
+
+  if (retroIdleTimerId) {
+    window.clearTimeout(retroIdleTimerId);
+  }
+
+  retroIdleTimerId = window.setTimeout(() => {
+    retroIdleTimerId = null;
+    startRetroTyping();
+  }, retroIdleDelayMs);
+}
+
+function initRetroTyping() {
+  if (!retroScreenEl) {
+    return;
+  }
+
+  retroScreenEl.textContent = retroInitialText;
+  scheduleRetroTypingOnIdle();
+
+  const idleResetEvents = ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"];
+  idleResetEvents.forEach((eventName) => {
+    window.addEventListener(eventName, scheduleRetroTypingOnIdle, { passive: true });
+  });
+}
+
+function pauseRetroTyping() {
+  retroTypingPaused = true;
+  if (retroIdleTimerId) {
+    window.clearTimeout(retroIdleTimerId);
+    retroIdleTimerId = null;
+  }
+
+  if (retroTypingTimerId) {
+    window.clearInterval(retroTypingTimerId);
+    retroTypingTimerId = null;
+  }
+}
+
+function resumeRetroTyping() {
+  retroTypingPaused = false;
+
+  if (retroTypingCompleted) {
+    return;
+  }
+
+  if (retroTypingStarted) {
+    startRetroTyping();
+    return;
+  }
+
+  scheduleRetroTypingOnIdle();
+}
+
+async function loadAppConfig() {
+  const response = await fetch("app.json", { cache: "no-store" });
+  if (!response.ok) {
+    throw new Error(`Unable to load app.json (${response.status})`);
+  }
+
+  const data = await response.json();
+  if (!data || !Array.isArray(data.floors)) {
+    throw new Error("Invalid app.json format: expected { floors: [...] }");
+  }
+
+  return {
+    floors: data.floors,
+    introduction: data.introduction || {},
+    settings: data.settings || {}
+  };
+}
+
+async function init() {
+  try {
+    const appConfig = await loadAppConfig();
+    floors = appConfig.floors;
+    introduction = appConfig.introduction;
+    applySettings(appConfig.settings);
+  } catch (error) {
+    console.error(error);
+    document.body.classList.add("app-ready");
+    return;
+  }
+
+  clearIntroductionContent();
+  applyIntroductionContent();
+  render();
+  updateLayoutForFloor(0);
+  restoreInitialScrollPosition();
+  initObservers();
+  setupLandingObserver();
+  initPcbAnimation();
+  initRetroTyping();
+  setActiveFromViewport();
   updateLandingProgress();
-  updateScrollCue();
+
+  window.requestAnimationFrame(() => {
+    document.body.classList.add("app-ready");
+  });
 }
+
+init();
 
 window.addEventListener("scroll", () => {
+  saveScrollTop();
   updateLandingProgress();
-  updateScrollCue();
 });
 window.addEventListener("resize", () => {
+  if (!floors.length) {
+    return;
+  }
+
   const currentLabel = activeFloorEl.textContent;
   const index = floors.findIndex((floor) => floor.level === currentLabel);
   setActive(index >= 0 ? index : 0);
+  updateLayoutForViewport();
   updateLandingProgress();
 });
+window.addEventListener("beforeunload", saveScrollTop);
