@@ -27,6 +27,16 @@
       "flipCleanupExtraMs": 60
     }
   },
+  "introduction": {
+    "entryStop": {
+      "badge": "",
+      "title": "Welcome to the AI Elevator",
+      "subtitle": "A learning journey to explain use of AI in coding.",
+      "description": "Drawing on <a href='https://steve-yegge.medium.com'>Yegge's levels<a/> and Neil.fun's <a href='https://neal.fun/space-elevator/'>space elevator</a>, this site classifies use of AI tools in to levels, representing stages of your use of AI tooling.",
+      "ariaLabel": "Welcome and explanation",
+      "productivity": false
+    }
+  },
   "floors": [
     {
       "id": "ground-floor",
@@ -40,15 +50,29 @@
       "agents": "x1",
       "subtitle": "Prompting, conversational AI.",
       "description": "You login to ChatGPT, Copilot, or Claude.ai. You talk to your AI, copy and paste, and get useful output quickly.<p>Other things</p>.",
+      "links": [
+        {
+          "text": "ChatGPT",
+          "url": "https://chatgpt.com"
+        },
+        {
+          "text": "Claude",
+          "url": "https://claude.ai"
+        },
+        {
+          "text": "copilot",
+          "url": "https://copilot.com"
+        }
+      ],
       "welcome": "Welcome aboard. You are at Ground Floor. Scroll up to ride the AI Elevator."
     },
     {
       "id": "first-floor",
       "level": "First Floor",
       "title": "Editor Dialog",
-      "dataSource": "right",
+      "position": "right",
       "altitude": "1x",
-      "layer": "City Layer",
+      "layer": "human together strong",
       "humans": "x1",
       "velocity": "x1",
       "team": "Pair",
@@ -71,7 +95,7 @@
     },
     {
       "id": "third-floor",
-      "dataSource": "right",
+      "position": "right",
       "level": "Third Floor",
       "title": "One-Shot Thinking",
       "altitude": 3000,
@@ -111,7 +135,7 @@
     },
     {
       "id": "sixth-floor",
-      "dataSource": "right",
+      "position": "right",
       "level": "Sixth Floor",
       "title": "Structured Decomposition",
       "altitude": 9000,
@@ -151,7 +175,7 @@
     },
     {
       "id": "ninth-floor",
-      "dataSource": "right",
+      "position": "right",
       "level": "Ninth Floor",
       "title": "Verification First",
       "altitude": 26000,

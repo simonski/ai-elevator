@@ -39,6 +39,7 @@ const runtimeSettings = {
 const stopsEl = document.getElementById("stops");
 const layoutEl = document.getElementById("experience-layout");
 const towerFloorsEl = document.getElementById("tower-floors");
+const hudEl = document.querySelector(".hud");
 const carEl = document.getElementById("car");
 const activeFloorEl = document.getElementById("active-floor");
 const altitudeEl = document.getElementById("altitude");
@@ -58,6 +59,7 @@ const landingNoteEl = document.getElementById("landing-note");
 const retroScreenEl = document.getElementById("retro-screen");
 const showFloorsLinkEl = document.getElementById("show-floors-link");
 const floorPlaintextEl = document.getElementById("floor-plaintext");
+let isPlainTextMode = false;
 
 const packetInputs = ["JAVA", "PYTHON", "GO"];
 const packetOutputs = {
@@ -73,6 +75,11 @@ const packetColors = [
 const retroIdleDelayMs = 2600;
 const retroTypeDelayMs = 24;
 const retroInitialText = "package main";
+const introElevatorHoldMs = 1800;
+const introCardSlideMs = 900;
+const groundFloorTowerRevealMs = 2000;
+const groundFloorPostTowerPauseMs = 2000;
+const groundFloorCardRevealDelayMs = groundFloorTowerRevealMs + groundFloorPostTowerPauseMs;
 const retroSieveSource = [
   "package main",
   "",
@@ -127,6 +134,11 @@ let retroTypingIndex = 0;
 let retroTypingStarted = false;
 let retroTypingPaused = false;
 let retroTypingCompleted = false;
+let pendingRevealIndex = null;
+let pendingRevealTimerId = null;
+let introSequencePlayed = false;
+let introSequenceTimerId = null;
+let introUnlockTimerId = null;
 
 function readNumber(value, fallback, min, max) {
   const num = Number(value);
@@ -267,6 +279,47 @@ function getIntroduction() {
   return introduction || {};
 }
 
+function setProductivityVisible(isVisible) {
+  if (!hudEl) {
+    return;
+  }
+
+  hudEl.hidden = !isVisible;
+}
+
+function startIntroductionSequence() {
+  if (introSequencePlayed) {
+    return;
+  }
+
+  introSequencePlayed = true;
+  document.body.classList.remove("intro-sequence-card-ready");
+
+  if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+    document.body.classList.add("intro-sequence-card-ready");
+    return;
+  }
+
+  document.body.classList.add("intro-sequence-lock");
+
+  if (introSequenceTimerId) {
+    window.clearTimeout(introSequenceTimerId);
+  }
+  if (introUnlockTimerId) {
+    window.clearTimeout(introUnlockTimerId);
+  }
+
+  introSequenceTimerId = window.setTimeout(() => {
+    document.body.classList.add("intro-sequence-card-ready");
+    introSequenceTimerId = null;
+
+    introUnlockTimerId = window.setTimeout(() => {
+      document.body.classList.remove("intro-sequence-lock");
+      introUnlockTimerId = null;
+    }, introCardSlideMs + 80);
+  }, introElevatorHoldMs);
+}
+
 function stripHtml(value) {
   return String(value || "")
     .replace(/<[^>]*>/g, " ")
@@ -274,29 +327,101 @@ function stripHtml(value) {
     .trim();
 }
 
+function normalizeFloorLinks(links) {
+  if (!Array.isArray(links)) {
+    return [];
+  }
+
+  return links
+    .map((item) => {
+      if (Array.isArray(item)) {
+        const [text, url] = item;
+        return { text, url };
+      }
+
+      if (item && typeof item === "object") {
+        return { text: item.text, url: item.url };
+      }
+
+      return null;
+    })
+    .filter((item) => item && item.text && item.url)
+    .map((item) => ({
+      text: String(item.text),
+      url: String(item.url)
+    }));
+}
+
+function renderFloorLinks(links) {
+  const normalized = normalizeFloorLinks(links);
+  if (!normalized.length) {
+    return "";
+  }
+
+  const linksMarkup = normalized
+    .map(
+      (link) =>
+        `<a href="${link.url}" target="_blank" rel="noopener noreferrer">${link.text}</a>`
+    )
+    .join("");
+
+  return `<p class="floor-links">${linksMarkup}</p>`;
+}
+
+function getFloorStopElement(index) {
+  return document.querySelector(`.stop[data-index="${index}"]`);
+}
+
 function formatFloorsPlainText(floorList) {
   if (!Array.isArray(floorList) || !floorList.length) {
     return "No floors found in app.json.";
   }
 
+  const divider = "=".repeat(72);
   return floorList
     .map((floor, index) => {
       const floorLevel = floor.level || `Floor ${index + 1}`;
       const floorTitle = floor.title || "Untitled";
       const subtitle = stripHtml(floor.subtitle || "");
       const description = stripHtml(floor.description || "");
-      const lines = [`${index + 1}. ${floorLevel}`, `Title: ${floorTitle}`];
+      const lines = [divider, `${index + 1}. ${floorLevel} - ${floorTitle}`];
 
       if (subtitle) {
-        lines.push(`Subtitle: ${subtitle}`);
+        lines.push(subtitle);
       }
       if (description) {
-        lines.push(`Description: ${description}`);
+        lines.push(description);
       }
 
       return lines.join("\n");
     })
-    .join("\n\n");
+    .join("\n\n")
+    .concat(`\n${divider}`);
+}
+
+function setPlainTextMode(enabled) {
+  isPlainTextMode = enabled;
+  document.body.classList.toggle("plaintext-mode", enabled);
+
+  if (showFloorsLinkEl) {
+    showFloorsLinkEl.textContent = enabled ? "ui mode" : "plain text";
+    showFloorsLinkEl.setAttribute("aria-pressed", enabled ? "true" : "false");
+  }
+
+  if (!floorPlaintextEl) {
+    return;
+  }
+
+  floorPlaintextEl.hidden = !enabled;
+  if (enabled) {
+    floorPlaintextEl.focus();
+  }
+}
+
+function jumpToStart() {
+  restoreInitialScrollPosition();
+  updateLandingProgress();
+  setActiveFromViewport();
 }
 
 function setupFloorPlainTextLink() {
@@ -304,20 +429,27 @@ function setupFloorPlainTextLink() {
     return;
   }
 
+  showFloorsLinkEl.textContent = "plain text";
+  showFloorsLinkEl.setAttribute("aria-pressed", "false");
+
   showFloorsLinkEl.addEventListener("click", async (event) => {
     event.preventDefault();
-    floorPlaintextEl.hidden = false;
-    floorPlaintextEl.textContent = "Loading floors from app.json...";
+    if (isPlainTextMode) {
+      setPlainTextMode(false);
+      jumpToStart();
+      return;
+    }
+
+    setPlainTextMode(true);
+    floorPlaintextEl.textContent = "Loading plain text view...";
 
     try {
-      const appConfig = await loadAppConfig();
-      floorPlaintextEl.textContent = formatFloorsPlainText(appConfig.floors);
+      const floorList = floors.length ? floors : (await loadAppConfig()).floors;
+      floorPlaintextEl.textContent = formatFloorsPlainText(floorList);
     } catch (error) {
       floorPlaintextEl.textContent = "Unable to read app.json right now.";
       console.error(error);
     }
-
-    floorPlaintextEl.focus();
   });
 }
 
@@ -352,6 +484,7 @@ function render() {
     .map((floor) => {
       const index = floors.indexOf(floor);
       const welcome = floor.welcome ? `<p class="welcome">${floor.welcome}</p>` : "";
+      const links = renderFloorLinks(floor.links);
 
       return `
         <article class="stop" data-index="${index}" id="${floor.id}">
@@ -365,6 +498,7 @@ function render() {
             <h2>${floor.title}</h2>
             <p class="subtitle">${floor.subtitle}</p>
             <p>${floor.description}</p>
+            ${links}
             ${welcome}
           </section>
         </article>
@@ -376,10 +510,13 @@ function render() {
   const entryMarkup = entryStop.title
     ? `
       <article class="stop entry-stop" id="tower-entry">
-        <section class="card">
-          <div class="badges">
-            <span>${entryStop.badge || "Tower Entry"}</span>
-          </div>
+        <section
+          class="card"
+          role="dialog"
+          aria-modal="false"
+          aria-label="${entryStop.ariaLabel || "Welcome message"}"
+        >
+          ${entryStop.badge ? `<div class="badges"><span>${entryStop.badge}</span></div>` : ""}
           <h2>${entryStop.title}</h2>
           <p class="subtitle">${entryStop.subtitle || ""}</p>
           <p>${entryStop.description || ""}</p>
@@ -414,8 +551,37 @@ function setActive(index) {
   target.classList.add("active");
 
   const current = floors[index];
-  updateLayoutForFloor(index);
+  const isFlippingForThisFloor = updateLayoutForFloor(index);
+  if (isFlippingForThisFloor) {
+    if (pendingRevealTimerId) {
+      window.clearTimeout(pendingRevealTimerId);
+      pendingRevealTimerId = null;
+    }
+
+    pendingRevealIndex = index;
+    const stopEl = getFloorStopElement(index);
+    if (stopEl) {
+      stopEl.classList.remove("reveal");
+    }
+
+    pendingRevealTimerId = window.setTimeout(() => {
+      if (pendingRevealIndex !== index) {
+        return;
+      }
+
+      const pendingStopEl = getFloorStopElement(index);
+      if (pendingStopEl) {
+        pendingStopEl.classList.add("reveal");
+      }
+      pendingRevealIndex = null;
+      pendingRevealTimerId = null;
+    }, runtimeSettings.layoutFlipMs);
+  } else if (pendingRevealIndex === index) {
+    pendingRevealIndex = null;
+  }
+
   triggerGroundFloorSequence(index);
+  setProductivityVisible(current.productivity !== false);
   activeFloorEl.textContent = current.level;
   altitudeEl.textContent = `${current.altitude.toLocaleString()}`;
   layerEl.textContent = current.layer;
@@ -441,6 +607,8 @@ function triggerGroundFloorSequence(index) {
   }
 
   groundFloorSequencePlayed = true;
+  document.body.classList.remove("in-introduction");
+  document.body.classList.remove("intro-sequence-lock");
   document.body.classList.add("ground-floor-sequence");
 
   window.requestAnimationFrame(() => {
@@ -454,30 +622,35 @@ function triggerGroundFloorSequence(index) {
   groundFloorTextTimerId = window.setTimeout(() => {
     document.body.classList.add("ground-floor-text-ready");
     groundFloorTextTimerId = null;
-  }, 2000);
+  }, groundFloorCardRevealDelayMs);
 }
 
-function getDataSourceForFloor(index) {
+function getPositionForFloor(index) {
   const floor = floors[index];
-  return floor && floor.dataSource === "left" ? "left" : "right";
+  if (!floor) {
+    return "right";
+  }
+
+  const position = floor.position || floor.dataSource || "right";
+  return position === "left" ? "left" : "right";
 }
 
 function updateLayoutForFloor(index) {
   if (!layoutEl) {
-    return;
+    return false;
   }
 
   if (window.innerWidth <= 920) {
-    layoutEl.classList.remove("side-left", "side-right", "is-flipping");
+    layoutEl.classList.remove("side-left", "side-right", "side-center", "is-flipping");
     currentLayoutSideClass = "side-left";
-    return;
+    return false;
   }
 
-  const dataSource = getDataSourceForFloor(index);
-  const nextLayoutSideClass = dataSource === "left" ? "side-right" : "side-left";
+  const position = getPositionForFloor(index);
+  const nextLayoutSideClass = position === "left" ? "side-right" : "side-left";
   const sideChanged = nextLayoutSideClass !== currentLayoutSideClass;
 
-  layoutEl.classList.remove("side-left", "side-right");
+  layoutEl.classList.remove("side-left", "side-right", "side-center");
   layoutEl.classList.add(nextLayoutSideClass);
 
   if (sideChanged) {
@@ -492,6 +665,7 @@ function updateLayoutForFloor(index) {
   }
 
   currentLayoutSideClass = nextLayoutSideClass;
+  return sideChanged;
 }
 
 function initObservers() {
@@ -501,6 +675,11 @@ function initObservers() {
     (entries) => {
       entries.forEach((entry) => {
         if (entry.isIntersecting) {
+          const index = Number(entry.target.dataset.index);
+          if (!Number.isNaN(index) && pendingRevealIndex === index) {
+            return;
+          }
+
           entry.target.classList.add("reveal");
         }
       });
@@ -530,6 +709,41 @@ function initObservers() {
     revealObserver.observe(stop);
     activeObserver.observe(stop);
   });
+}
+
+function initIntroductionObserver() {
+  const entryStopEl = document.getElementById("tower-entry");
+  const intro = getIntroduction();
+  const entryStop = intro.entryStop || {};
+  if (!entryStopEl) {
+    document.body.classList.remove("in-introduction");
+    return;
+  }
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (groundFloorSequencePlayed) {
+          document.body.classList.remove("in-introduction");
+          return;
+        }
+
+        document.body.classList.toggle("in-introduction", entry.isIntersecting);
+        if (entry.isIntersecting) {
+          startIntroductionSequence();
+          setProductivityVisible(entryStop.productivity !== false);
+        }
+        if (entry.isIntersecting && layoutEl && window.innerWidth > 920) {
+          layoutEl.classList.remove("side-left", "side-right");
+          layoutEl.classList.add("side-center");
+          currentLayoutSideClass = "side-center";
+        }
+      });
+    },
+    { threshold: 0.55 }
+  );
+
+  observer.observe(entryStopEl);
 }
 
 function clampScrollTop(value) {
@@ -627,18 +841,21 @@ function setupLandingObserver() {
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
-        document.body.classList.toggle("in-landing", entry.isIntersecting);
-        if (entry.isIntersecting) {
+        const isVisible = entry.isIntersecting || entry.intersectionRatio > 0;
+        document.body.classList.toggle("in-landing", isVisible);
+        if (isVisible) {
+          resumePcbAnimation();
           resumeRetroTyping();
         } else {
+          pausePcbAnimation();
           pauseRetroTyping();
         }
-        if (!entry.isIntersecting) {
+        if (!isVisible) {
           document.documentElement.style.setProperty("--landing-progress", "0");
         }
       });
     },
-    { threshold: runtimeSettings.landingObserverThreshold }
+    { threshold: [0, runtimeSettings.landingObserverThreshold] }
   );
 
   observer.observe(landingEl);
@@ -692,19 +909,33 @@ function spawnPacket() {
 }
 
 function initPcbAnimation() {
+  resumePcbAnimation();
+}
+
+function pausePcbAnimation() {
+  if (packetIntervalId) {
+    window.clearInterval(packetIntervalId);
+    packetIntervalId = null;
+  }
+}
+
+function resumePcbAnimation() {
   if (!packetLaneEl) {
     return;
   }
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-    spawnPacket();
+    if (!packetLaneEl.querySelector(".packet")) {
+      spawnPacket();
+    }
+    return;
+  }
+
+  if (packetIntervalId) {
     return;
   }
 
   spawnPacket();
-  if (packetIntervalId) {
-    window.clearInterval(packetIntervalId);
-  }
   packetIntervalId = window.setInterval(spawnPacket, runtimeSettings.packetIntervalMs);
 }
 
@@ -830,6 +1061,7 @@ async function init() {
   updateLayoutForFloor(0);
   restoreInitialScrollPosition();
   initObservers();
+  initIntroductionObserver();
   setupLandingObserver();
   initPcbAnimation();
   initRetroTyping();
